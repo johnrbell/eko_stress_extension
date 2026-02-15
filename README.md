@@ -2,6 +2,14 @@
 
 A complete performance testing toolkit for measuring how CPU/JS stress affects the eko gallery user experience on Shopify stores. Includes a Liquid snippet that simulates various levels of browser stress, plus automated Playwright-based testing with visual D3.js reports.
 
+<p align="center">
+  <img src="images/panel-running.png" alt="Stress Test Control Panel" width="700">
+</p>
+
+<p align="center">
+  <em>The stress test control panel showing live metrics during a test run</em>
+</p>
+
 ---
 
 ## Table of Contents
@@ -140,6 +148,16 @@ https://your-store.myshopify.com/products/test-product?stress=1&intensity=off
 
 When the snippet is installed, a control panel appears on product pages:
 
+<p align="center">
+  <img src="images/panel-idle.png" alt="Control Panel - Idle State" width="700">
+</p>
+
+<p align="center">
+  <em>The stress test panel in idle state, ready to configure and run tests</em>
+</p>
+
+**Panel Features:**
+
 - **Intensity Selector** - Choose stress level (off/low/medium/high/extreme)
 - **Duration Selector** - How long the test runs
 - **Stress Type Toggles** - Enable/disable specific stress types
@@ -233,6 +251,24 @@ const CONFIG = {
 
 The tool generates interactive HTML reports with D3.js charts:
 
+<p align="center">
+  <img src="images/visual-report.png" alt="Visual Report - Executive Summary" width="700">
+</p>
+
+<p align="center">
+  <em>Executive summary showing blocking time and user experience ratings for each intensity level</em>
+</p>
+
+<p align="center">
+  <img src="images/visual-report-charts.png" alt="Visual Report - Charts" width="700">
+</p>
+
+<p align="center">
+  <em>Interactive D3.js charts comparing page load times and eko gallery performance</em>
+</p>
+
+**Report Sections:**
+
 - **Executive Summary** - Color-coded cards showing impact at each level
 - **Blocking Time Chart** - Bar chart comparing main thread blocking
 - **Load Time Chart** - Page load vs eko gallery load times
@@ -302,8 +338,13 @@ Reports are saved to `perf-test/reports/`:
 ## File Structure
 
 ```
-jb-slowdowntest/
+stress-test/
 ├── README.md                           # This file
+├── images/                             # Screenshots for documentation
+│   ├── panel-idle.png                  # Control panel in idle state
+│   ├── panel-running.png               # Control panel during stress test
+│   ├── visual-report.png               # Report executive summary
+│   └── visual-report-charts.png        # Report charts section
 ├── snippets/
 │   └── cpu-stress-test.liquid          # The stress test snippet
 ├── layout/
@@ -311,6 +352,7 @@ jb-slowdowntest/
 └── perf-test/
     ├── run-perf-tests.js               # Main test script
     ├── generate-visual-report.js       # Report generator
+    ├── capture-screenshots.js          # Screenshot capture for docs
     ├── package.json                    # Dependencies
     ├── README.md                       # Testing tool docs
     └── reports/
