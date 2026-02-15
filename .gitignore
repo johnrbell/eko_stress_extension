@@ -1,0 +1,25 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Test reports (can be regenerated)
+perf-test/reports/*.json
+perf-test/reports/*.md
+perf-test/reports/visual-report.html
+
+# Keep the reports directory
+!perf-test/reports/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Shopify CLI
+.shopify/
