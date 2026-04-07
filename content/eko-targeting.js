@@ -270,14 +270,24 @@
     }
   });
 
-  // Auto-start fallback: check DOM attribute planted by bridge
-  const autoData = document.documentElement.getAttribute('data-eko-stress');
-  if (autoData) {
+  // Synchronous auto-start from cookie (same as stress-engine.js)
+  const cookieMatch = document.cookie.match(/ekoStressSettings=([^;]+)/);
+  if (cookieMatch) {
     try {
-      const msg = JSON.parse(autoData);
-      if (msg.type === 'eko-stress-start' && msg.settings) {
-        window.__ekoTargeting.start(msg.settings);
-      }
+      const settings = JSON.parse(decodeURIComponent(cookieMatch[1]));
+      window.__ekoTargeting.start(settings);
     } catch (_) {}
+  }
+
+  if (!window.__ekoTargeting._active) {
+    const autoData = document.documentElement.getAttribute('data-eko-stress');
+    if (autoData) {
+      try {
+        const msg = JSON.parse(autoData);
+        if (msg.type === 'eko-stress-start' && msg.settings) {
+          window.__ekoTargeting.start(msg.settings);
+        }
+      } catch (_) {}
+    }
   }
 })();

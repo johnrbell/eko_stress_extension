@@ -240,15 +240,28 @@
     }
   });
 
-  // Auto-start fallback: bridge may have already written settings into a DOM
-  // attribute before this script loaded. Check it synchronously on init.
-  const autoData = document.documentElement.getAttribute('data-eko-stress');
-  if (autoData) {
+  // Synchronous auto-start: read settings from cookie planted by the service
+  // worker BEFORE page reload. document.cookie is synchronous, so this fires
+  // instantly at document_start, blocking the main thread before any page
+  // scripts can execute.
+  const cookieMatch = document.cookie.match(/ekoStressSettings=([^;]+)/);
+  if (cookieMatch) {
     try {
-      const msg = JSON.parse(autoData);
-      if (msg.type === 'eko-stress-start' && msg.settings) {
-        window.__ekoStressEngine.start(msg.settings);
-      }
+      const settings = JSON.parse(decodeURIComponent(cookieMatch[1]));
+      window.__ekoStressEngine.start(settings);
     } catch (_) {}
+  }
+
+  // Async fallback: bridge may set a DOM attribute after reading storage
+  if (!window.__stressState?.active) {
+    const autoData = document.documentElement.getAttribute('data-eko-stress');
+    if (autoData) {
+      try {
+        const msg = JSON.parse(autoData);
+        if (msg.type === 'eko-stress-start' && msg.settings) {
+          window.__ekoStressEngine.start(msg.settings);
+        }
+      } catch (_) {}
+    }
   }
 })();

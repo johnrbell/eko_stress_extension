@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
 const armedTabs = new Map();
 
 const STRESS_SCRIPT_IDS = ['eko-bridge-cs', 'eko-stress-cs', 'eko-targeting-cs'];
+const COOKIE_NAME = 'ekoStressSettings';
 
 async function registerStressScripts() {
   try {
@@ -53,9 +54,19 @@ async function unregisterStressScripts() {
   } catch (_) {}
 }
 
+async function removeCookie() {
+  try {
+    const data = await chrome.storage.local.get('armedTabUrl');
+    if (data.armedTabUrl) {
+      await chrome.cookies.remove({ url: data.armedTabUrl, name: COOKIE_NAME });
+    }
+  } catch (_) {}
+}
+
 async function cleanupTest(tabId) {
   if (tabId) armedTabs.delete(tabId);
-  await chrome.storage.local.set({ testActive: false, armedTabId: null });
+  await removeCookie();
+  await chrome.storage.local.set({ testActive: false, armedTabId: null, armedTabUrl: null });
   await unregisterStressScripts();
 }
 
@@ -92,12 +103,32 @@ const messageHandlers = {
     const tabId = message.tabId;
     const settings = message.settings;
 
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.url;
+
     await chrome.storage.local.set({
       settings,
       testActive: true,
-      armedTabId: tabId
+      armedTabId: tabId,
+      armedTabUrl: url
     });
     armedTabs.set(tabId, settings);
+
+    // Plant settings in a cookie BEFORE reload so MAIN world scripts can
+    // read them synchronously via document.cookie at document_start.
+    if (url) {
+      try {
+        await chrome.cookies.set({
+          url,
+          name: COOKIE_NAME,
+          value: encodeURIComponent(JSON.stringify(settings)),
+          path: '/',
+          expirationDate: Math.floor(Date.now() / 1000) + 300
+        });
+      } catch (err) {
+        console.warn('[eko SW] Cookie set failed:', err.message);
+      }
+    }
 
     await registerStressScripts();
     chrome.tabs.reload(tabId);
