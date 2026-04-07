@@ -31,10 +31,19 @@ The eko icon will appear in your toolbar.
 2. Click the extension icon in the toolbar
 3. Configure intensity, duration, and stress types
 4. Click **Start Test**
-5. A floating metrics panel appears on the page showing live results (elapsed time, blocked time, operations, impact meter, estimated FPS, block rate)
-6. Click **Stop** or wait for the duration to expire
+5. A confirmation screen appears -- click **Load Page Now** to begin the stress test
+6. A floating metrics panel appears on the page showing live results (elapsed time, blocked time, operations, impact meter, estimated FPS, block rate)
+7. Click **Stop** or wait for the duration to expire
+
+<p align="center">
+  <img src="screenshots/stress-test-ready.png" alt="Stress Test Ready screen" width="500">
+</p>
 
 ### Popup Controls
+
+<p align="center">
+  <img src="screenshots/popup-controls.png" alt="Extension popup controls" width="350">
+</p>
 
 | Control | Options | Description |
 |---------|---------|-------------|
@@ -114,6 +123,10 @@ MAIN world scripts must run in the page's JavaScript context to block the main t
 ---
 
 ## How It Works
+
+<p align="center">
+  <img src="screenshots/metrics-panel.png" alt="Live metrics panel" width="400">
+</p>
 
 When you click **Start Test**, the service worker injects four scripts into the active tab:
 
