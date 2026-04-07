@@ -14,7 +14,8 @@ const DEFAULT_SETTINGS = {
   ekoRenderInterference: false
 };
 
-const tabState = new Map();
+// Tabs that should auto-start stress on next page load
+const armedTabs = new Map();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handler = messageHandlers[message.type];
@@ -46,79 +47,112 @@ const messageHandlers = {
   },
 
   'start-test': async (message) => {
-    const tab = message.tabId;
+    const tabId = message.tabId;
     const settings = message.settings;
 
     await chrome.storage.local.set({ settings });
 
-    await chrome.scripting.executeScript({
-      target: { tabId: tab },
-      files: ['content/content-bridge.js']
-    });
+    armedTabs.set(tabId, settings);
+    chrome.tabs.reload(tabId);
 
-    await chrome.scripting.executeScript({
-      target: { tabId: tab },
-      files: ['content/stress-engine.js'],
-      world: 'MAIN'
-    });
-
-    await chrome.scripting.executeScript({
-      target: { tabId: tab },
-      files: ['content/eko-targeting.js'],
-      world: 'MAIN'
-    });
-
-    await chrome.scripting.executeScript({
-      target: { tabId: tab },
-      files: ['content/panel.js'],
-      world: 'MAIN'
-    });
-
-    await chrome.scripting.insertCSS({
-      target: { tabId: tab },
-      files: ['content/panel.css']
-    });
-
-    await chrome.tabs.sendMessage(tab, {
-      type: 'eko-stress-start',
-      settings
-    });
-
-    tabState.set(tab, { running: true, settings, startedAt: Date.now() });
     return { ok: true };
   },
 
   'stop-test': async (message) => {
-    const tab = message.tabId;
+    const tabId = message.tabId;
+    armedTabs.delete(tabId);
     try {
-      await chrome.tabs.sendMessage(tab, { type: 'eko-stress-stop' });
-    } catch (_) { /* tab may have navigated */ }
-    tabState.delete(tab);
+      await chrome.tabs.sendMessage(tabId, { type: 'eko-stress-stop' });
+    } catch (_) {}
     return { ok: true };
   },
 
   'get-tab-state': (message) => {
-    const state = tabState.get(message.tabId);
-    return state || { running: false };
+    const armed = armedTabs.has(message.tabId);
+    return { running: armed };
   },
 
-  'metrics-update': (message, sender) => {
-    const tab = sender.tab?.id;
-    if (tab && tabState.has(tab)) {
-      tabState.get(tab).metrics = message.metrics;
-    }
-    return { ok: true };
-  },
+  'metrics-update': () => ({ ok: true }),
 
-  'test-ended': (message, sender) => {
-    const tab = sender.tab?.id;
-    if (tab) {
-      tabState.delete(tab);
-    }
+  'test-ended': (_message, sender) => {
+    const tabId = sender.tab?.id;
+    if (tabId) armedTabs.delete(tabId);
     return { ok: true };
   }
 };
 
+// Inject scripts when an armed tab loads
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  const settings = armedTabs.get(tabId);
+  if (!settings) return;
+
+  // 'loading': new document exists, inject engine + eko-targeting + bridge early
+  if (changeInfo.status === 'loading') {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/content-bridge.js']
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/stress-engine.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/eko-targeting.js'],
+        world: 'MAIN'
+      });
+
+      // Send start command immediately so stress begins during page parse
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'eko-stress-start',
+        settings
+      });
+    } catch (err) {
+      console.warn('[eko SW] Early inject failed (will retry on complete):', err.message);
+    }
+  }
+
+  // 'complete': DOM is ready, inject the panel UI + CSS
+  if (changeInfo.status === 'complete') {
+    try {
+      // Re-inject bridge + engine in case early inject was too early
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/content-bridge.js']
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/stress-engine.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/eko-targeting.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content/panel.js'],
+        world: 'MAIN'
+      });
+      await chrome.scripting.insertCSS({
+        target: { tabId },
+        files: ['content/panel.css']
+      });
+
+      // Send start again -- idempotent due to guards in each script
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'eko-stress-start',
+        settings
+      });
+    } catch (err) {
+      console.error('[eko SW] Complete-phase inject failed:', err.message);
+    }
+  }
+});
+
 chrome.tabs.onRemoved.addListener(tabId => {
-  tabState.delete(tabId);
+  armedTabs.delete(tabId);
 });

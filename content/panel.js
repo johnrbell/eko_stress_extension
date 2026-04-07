@@ -93,6 +93,18 @@
   function createPanel() {
     if (document.getElementById('eko-stress-panel-ext')) return;
 
+    // Defer until body exists (may be called during 'loading' phase)
+    if (!document.body) {
+      const obs = new MutationObserver(() => {
+        if (document.body) {
+          obs.disconnect();
+          createPanel();
+        }
+      });
+      obs.observe(document.documentElement, { childList: true });
+      return;
+    }
+
     const panel = document.createElement('div');
     panel.id = 'eko-stress-panel-ext';
     panel.className = 'eko-stress-panel running';

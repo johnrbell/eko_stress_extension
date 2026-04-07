@@ -106,7 +106,8 @@ async function startTest() {
       tabId: activeTabId,
       settings
     });
-    setRunningState(true);
+    // Page will reload -- close the popup
+    window.close();
   } catch (err) {
     console.error('Failed to start test:', err);
   }

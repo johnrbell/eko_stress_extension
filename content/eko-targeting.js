@@ -239,8 +239,11 @@
   // Public API
   // -----------------------------------------------------------------------
   window.__ekoTargeting = {
+    _active: false,
+
     start(settings) {
-      this.stop();
+      if (this._active) return;
+      this._active = true;
       const intensity = settings.intensity || 'medium';
 
       if (settings.ekoNetworkDelay) enableNetworkDelay(intensity);
@@ -249,6 +252,7 @@
     },
 
     stop() {
+      this._active = false;
       disableNetworkDelay();
       disableDomTargeting();
       disableRenderInterference();

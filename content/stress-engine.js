@@ -13,7 +13,7 @@
 
   window.__ekoStressEngine = {
     start(settings) {
-      this.stop();
+      if (window.__stressState?.active) return;
 
       const intensity = settings.intensity || 'medium';
       if (intensity === 'off') {
