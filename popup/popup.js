@@ -11,7 +11,8 @@ const DEFAULT_SETTINGS = {
   network: false,
   ekoNetworkDelay: false,
   ekoDomTargeting: false,
-  ekoRenderInterference: false
+  ekoRenderInterference: false,
+  networkThrottle: 'none'
 };
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -45,6 +46,10 @@ function renderUI() {
     btn.classList.toggle('active', parseInt(btn.dataset.duration) === settings.duration);
   });
 
+  document.querySelectorAll('#network-group .eko-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.throttle === (settings.networkThrottle || 'none'));
+  });
+
   document.querySelectorAll('.eko-toggle').forEach(toggle => {
     const key = toggle.dataset.key;
     const checkbox = toggle.querySelector('input');
@@ -74,6 +79,14 @@ function bindEvents() {
   document.querySelectorAll('#duration-group .eko-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       settings.duration = parseInt(btn.dataset.duration);
+      renderUI();
+      saveSettings();
+    });
+  });
+
+  document.querySelectorAll('#network-group .eko-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      settings.networkThrottle = btn.dataset.throttle;
       renderUI();
       saveSettings();
     });

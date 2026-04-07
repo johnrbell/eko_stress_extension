@@ -11,10 +11,20 @@ const DEFAULT_SETTINGS = {
   network: false,
   ekoNetworkDelay: false,
   ekoDomTargeting: false,
-  ekoRenderInterference: false
+  ekoRenderInterference: false,
+  networkThrottle: 'none'
+};
+
+const THROTTLE_PRESETS = {
+  none:    null,
+  fast3g:  { offline: false, latency: 150,  downloadThroughput: 200000,  uploadThroughput: 93750  },
+  slow3g:  { offline: false, latency: 400,  downloadThroughput: 62500,   uploadThroughput: 62500  },
+  regular2g: { offline: false, latency: 800, downloadThroughput: 31250,  uploadThroughput: 6250   },
+  offline: { offline: true,  latency: 0,    downloadThroughput: -1,      uploadThroughput: -1     }
 };
 
 const armedTabs = new Map();
+const debuggedTabs = new Set();
 
 const STRESS_SCRIPT_IDS = ['eko-bridge-cs', 'eko-stress-cs', 'eko-targeting-cs'];
 const COOKIE_NAME = 'ekoStressSettings';
@@ -63,8 +73,43 @@ async function removeCookie() {
   } catch (_) {}
 }
 
+async function applyThrottle(tabId, preset) {
+  const params = THROTTLE_PRESETS[preset];
+  if (!params) return;
+
+  const target = { tabId };
+  try {
+    await chrome.debugger.attach(target, '1.3');
+    debuggedTabs.add(tabId);
+  } catch (err) {
+    if (!err.message?.includes('Already attached')) {
+      console.warn('[eko SW] Debugger attach failed:', err.message);
+      return;
+    }
+  }
+
+  try {
+    await chrome.debugger.sendCommand(target, 'Network.enable');
+    await chrome.debugger.sendCommand(target, 'Network.emulateNetworkConditions', params);
+    console.log(`[eko SW] Network throttle applied: ${preset}`);
+  } catch (err) {
+    console.warn('[eko SW] Network.emulateNetworkConditions failed:', err.message);
+  }
+}
+
+async function detachDebugger(tabId) {
+  if (!tabId || !debuggedTabs.has(tabId)) return;
+  debuggedTabs.delete(tabId);
+  try {
+    await chrome.debugger.detach({ tabId });
+  } catch (_) {}
+}
+
 async function cleanupTest(tabId) {
-  if (tabId) armedTabs.delete(tabId);
+  if (tabId) {
+    armedTabs.delete(tabId);
+    await detachDebugger(tabId);
+  }
   await removeCookie();
   await chrome.storage.local.set({ testActive: false, armedTabId: null, armedTabUrl: null });
   await unregisterStressScripts();
@@ -160,7 +205,7 @@ const messageHandlers = {
   }
 };
 
-// Inject floating panel + CSS once the page is fully loaded
+// Inject floating panel + CSS once the page is fully loaded, and apply network throttle
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   if (changeInfo.status !== 'complete') return;
 
@@ -170,6 +215,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     if (!data.testActive || data.armedTabId !== tabId) return;
     settings = data.settings;
     armedTabs.set(tabId, settings);
+  }
+
+  // Apply network throttle via Chrome Debugger Protocol after page starts loading
+  if (settings.networkThrottle && settings.networkThrottle !== 'none') {
+    await applyThrottle(tabId, settings.networkThrottle);
   }
 
   try {
@@ -192,7 +242,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+  debuggedTabs.delete(tabId);
   if (armedTabs.has(tabId)) {
     await cleanupTest(tabId);
   }
+});
+
+// Clean up debugger tracking when user manually closes the debug bar
+chrome.debugger.onDetach.addListener((source) => {
+  if (source.tabId) debuggedTabs.delete(source.tabId);
 });
