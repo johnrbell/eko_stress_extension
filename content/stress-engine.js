@@ -4,11 +4,11 @@
   if (window.__ekoStressEngine) return;
 
   const INTENSITY_SETTINGS = {
-    off:     { iterations: 0,       blockMs: 0,   layoutOps: 0,   memoryAllocs: 0,   domOps: 0,   networkOps: 0 },
-    low:     { iterations: 8000,    blockMs: 15,  layoutOps: 8,   memoryAllocs: 3,   domOps: 2,   networkOps: 2 },
-    medium:  { iterations: 80000,   blockMs: 80,  layoutOps: 40,  memoryAllocs: 15,  domOps: 8,   networkOps: 8 },
-    high:    { iterations: 400000,  blockMs: 250, layoutOps: 125, memoryAllocs: 45,  domOps: 25,  networkOps: 25 },
-    extreme: { iterations: 2000000, blockMs: 800, layoutOps: 500, memoryAllocs: 150, domOps: 100, networkOps: 100 }
+    off:     { iterations: 0,       blockMs: 0,   layoutOps: 0,   memoryAllocs: 0,   domOps: 0,   networkOps: 0,   yieldMs: 0 },
+    low:     { iterations: 8000,    blockMs: 15,  layoutOps: 8,   memoryAllocs: 3,   domOps: 2,   networkOps: 2,   yieldMs: 80 },
+    medium:  { iterations: 80000,   blockMs: 80,  layoutOps: 40,  memoryAllocs: 15,  domOps: 8,   networkOps: 8,   yieldMs: 50 },
+    high:    { iterations: 400000,  blockMs: 250, layoutOps: 125, memoryAllocs: 45,  domOps: 25,  networkOps: 25,  yieldMs: 30 },
+    extreme: { iterations: 2000000, blockMs: 800, layoutOps: 500, memoryAllocs: 150, domOps: 100, networkOps: 100, yieldMs: 16 }
   };
 
   window.__ekoStressEngine = {
@@ -62,7 +62,7 @@
       // Initial synchronous block during page activity
       if (config.longtasks) {
         const syncStart = performance.now();
-        const syncDuration = cfg.blockMs * 3;
+        const syncDuration = cfg.blockMs;
         const heavyWork = [];
         while (performance.now() - syncStart < syncDuration) {
           let x = Math.sqrt(Math.random() * 1000000);
@@ -216,7 +216,7 @@
           }));
         }
 
-        setTimeout(blockMainThread, 4);
+        setTimeout(blockMainThread, cfg.yieldMs);
       }
 
       blockMainThread();
@@ -240,14 +240,88 @@
     }
   });
 
-  // Synchronous auto-start: read settings from cookie planted by the service
-  // worker BEFORE page reload. document.cookie is synchronous, so this fires
-  // instantly at document_start, blocking the main thread before any page
-  // scripts can execute.
+  function injectGateOverlay(settings) {
+    var intensityLabels = { low: 'Low', medium: 'Medium', high: 'High', extreme: 'Extreme' };
+    var active = [];
+    if (settings.js !== false) active.push('JS Compute');
+    if (settings.layout !== false) active.push('Layout');
+    if (settings.longtasks !== false) active.push('Long Tasks');
+    if (settings.memory) active.push('Memory');
+    if (settings.dom) active.push('DOM');
+    if (settings.network) active.push('Event Loop');
+    if (settings.ekoNetworkDelay) active.push('eko Net Delay');
+    if (settings.ekoDomTargeting) active.push('eko DOM');
+    if (settings.ekoRenderInterference) active.push('eko Render');
+    var networkLabel = settings.networkThrottle && settings.networkThrottle !== 'none'
+      ? settings.networkThrottle.replace('fast3g', 'Fast 3G').replace('slow3g', 'Slow 3G').replace('regular2g', '2G').replace('offline', 'Offline')
+      : null;
+    var durationLabel = settings.duration > 0 ? settings.duration + 's' : 'Unlimited';
+
+    var tagsHtml = '<span style="border-color:#6366f1;color:#a5b4fc;background:rgba(99,102,241,.1);padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid #6366f1;display:inline-block">'
+      + (intensityLabels[settings.intensity] || settings.intensity) + '</span> '
+      + '<span style="background:#1f1f28;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 12px;font-size:11px;color:#a1a1aa;display:inline-block">' + durationLabel + '</span> ';
+    if (networkLabel) tagsHtml += '<span style="border-color:#6366f1;color:#a5b4fc;background:rgba(99,102,241,.1);padding:5px 12px;border-radius:6px;font-size:11px;border:1px solid #6366f1;display:inline-block">' + networkLabel + '</span> ';
+    if (settings.disableCache !== false) tagsHtml += '<span style="background:#1f1f28;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 12px;font-size:11px;color:#a1a1aa;display:inline-block">No Cache</span> ';
+    for (var i = 0; i < active.length; i++) {
+      tagsHtml += '<span style="background:#1f1f28;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 12px;font-size:11px;color:#a1a1aa;display:inline-block">' + active[i] + '</span> ';
+    }
+
+    // Build the gate using direct DOM manipulation with all styles inline.
+    // At document_start, <head>/<body> may not exist, so we construct them.
+    var root = document.documentElement;
+    root.innerHTML = '';
+
+    var head = document.createElement('head');
+    root.appendChild(head);
+
+    var body = document.createElement('body');
+    body.setAttribute('style', 'margin:0;padding:0;background:#0f0f14;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#f4f4f5');
+
+    body.innerHTML = '<div style="text-align:center;max-width:440px;padding:40px">'
+      + '<svg width="68" height="30" viewBox="0 0 45 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:16px">'
+      + '<path d="M30.0606 5.62405H24.8662L20.5566 12.4505V0H16.1478V19.6728H20.0074L22.8143 15.7534L25.6213 19.6728H31.2658L25.4154 12.1157L30.0606 5.62405Z" fill="white"/>'
+      + '<path fill-rule="evenodd" clip-rule="evenodd" d="M29.5267 12.6408C29.5267 8.57686 32.8295 5.28158 36.9026 5.28158C40.9834 5.28158 44.2862 8.57686 44.2786 12.6408C44.2786 16.7047 40.9758 20 36.9026 20C32.8295 20 29.5267 16.7047 29.5267 12.6408ZM33.9507 12.6484C33.9507 14.4597 35.2703 15.7686 36.9026 15.7686C38.535 15.7686 39.8545 14.4521 39.8545 12.6484C39.8545 10.8371 38.535 9.52055 36.9026 9.52055C35.2703 9.52055 33.9507 10.8371 33.9507 12.6484Z" fill="white"/>'
+      + '<path fill-rule="evenodd" clip-rule="evenodd" d="M0 12.6408C0 8.57686 3.30278 5.28158 7.37595 5.28158C11.4491 5.28158 14.7519 8.57686 14.7519 12.6408C14.7519 13.1126 14.7061 13.5769 14.6222 14.0259H4.41642C4.91984 15.449 6.03348 16.172 7.41409 16.172C8.73368 16.172 9.32863 15.7839 9.79392 15.2359H14.279C13.2264 18.0213 10.5338 20 7.37595 20C3.30278 20 0 16.7047 0 12.6408ZM7.37595 9.14002C6.03348 9.14002 4.88933 9.9315 4.41641 11.2557H10.3355C9.87019 9.9315 8.71842 9.14002 7.37595 9.14002Z" fill="white"/>'
+      + '</svg>'
+      + '<h1 style="font-size:22px;font-weight:700;margin:0 0 6px;background:linear-gradient(90deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Stress Test Ready</h1>'
+      + '<p style="color:#a1a1aa;font-size:13px;margin:0 0 24px;line-height:1.5">Stress will activate when the page loads.<br>Click below to begin.</p>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:28px">' + tagsHtml + '</div>'
+      + '<button id="ekoGateLoad" style="display:inline-block;padding:14px 48px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:15px;font-weight:600;border:none;border-radius:10px;cursor:pointer;letter-spacing:.3px">Load Page Now</button>'
+      + '<br>'
+      + '<button id="ekoGateCancel" style="display:inline-block;margin-top:16px;color:#71717a;font-size:12px;cursor:pointer;background:none;border:none;text-decoration:underline">Cancel Test</button>'
+      + '</div>';
+
+    root.appendChild(body);
+
+    document.getElementById('ekoGateLoad').addEventListener('click', function() {
+      document.cookie = 'ekoStressGate=;path=/;max-age=0';
+      location.reload();
+    });
+
+    document.getElementById('ekoGateCancel').addEventListener('click', function() {
+      document.cookie = 'ekoStressGate=;path=/;max-age=0';
+      document.cookie = 'ekoStressSettings=;path=/;max-age=0';
+      location.reload();
+    });
+  }
+
+  // Synchronous auto-start from cookie at document_start.
   const cookieMatch = document.cookie.match(/ekoStressSettings=([^;]+)/);
   if (cookieMatch) {
     try {
       const settings = JSON.parse(decodeURIComponent(cookieMatch[1]));
+      const isGate = /ekoStressGate=1/.test(document.cookie);
+
+      if (isGate) {
+        // Phase 1 (GATE): replace the document immediately before any page
+        // content loads. Don't start the stress engine yet -- it will start
+        // on Phase 2 when the user clicks "Load Page Now".
+        window.stop();
+        injectGateOverlay(settings);
+        return; // exit the IIFE entirely during gate phase
+      }
+
+      // Phase 2 (ACTIVE): start stress, page loads normally under stress
       window.__ekoStressEngine.start(settings);
     } catch (_) {}
   }

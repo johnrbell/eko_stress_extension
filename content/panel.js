@@ -265,4 +265,11 @@
       removePanel();
     }
   });
+
+  // Auto-create panel at document_start if test is active and not in gate phase
+  var cookieMatch = document.cookie.match(/ekoStressSettings=([^;]+)/);
+  var isGate = /ekoStressGate=1/.test(document.cookie);
+  if (cookieMatch && !isGate) {
+    createPanel();
+  }
 })();

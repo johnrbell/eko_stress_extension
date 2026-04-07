@@ -27,8 +27,9 @@ const THROTTLE_PRESETS = {
 const armedTabs = new Map();
 const debuggedTabs = new Set();
 
-const STRESS_SCRIPT_IDS = ['eko-bridge-cs', 'eko-stress-cs', 'eko-targeting-cs'];
+const STRESS_SCRIPT_IDS = ['eko-bridge-cs', 'eko-stress-cs', 'eko-targeting-cs', 'eko-panel-cs'];
 const COOKIE_NAME = 'ekoStressSettings';
+const GATE_COOKIE = 'ekoStressGate';
 
 async function registerStressScripts() {
   try {
@@ -55,6 +56,14 @@ async function registerStressScripts() {
       js: ['content/eko-targeting.js'],
       runAt: 'document_start',
       world: 'MAIN'
+    },
+    {
+      id: 'eko-panel-cs',
+      matches: ['<all_urls>'],
+      js: ['content/panel.js'],
+      css: ['content/panel.css'],
+      runAt: 'document_start',
+      world: 'MAIN'
     }
   ]);
 }
@@ -65,19 +74,24 @@ async function unregisterStressScripts() {
   } catch (_) {}
 }
 
-async function removeCookie() {
+async function removeCookies() {
   try {
     const data = await chrome.storage.local.get('armedTabUrl');
     if (data.armedTabUrl) {
       await chrome.cookies.remove({ url: data.armedTabUrl, name: COOKIE_NAME });
+      await chrome.cookies.remove({ url: data.armedTabUrl, name: GATE_COOKIE });
     }
   } catch (_) {}
 }
 
+const CPU_THROTTLE_RATES = {
+  off: 1, low: 2, medium: 4, high: 6, extreme: 20
+};
+
 async function applyDebuggerSettings(tabId, settings) {
   const throttle = THROTTLE_PRESETS[settings.networkThrottle];
   const disableCache = settings.disableCache !== false;
-  if (!throttle && !disableCache) return;
+  const cpuRate = CPU_THROTTLE_RATES[settings.intensity] || 1;
 
   const target = { tabId };
   try {
@@ -102,6 +116,11 @@ async function applyDebuggerSettings(tabId, settings) {
       await chrome.debugger.sendCommand(target, 'Network.emulateNetworkConditions', throttle);
       console.log(`[eko SW] Network throttle applied: ${settings.networkThrottle}`);
     }
+
+    if (cpuRate > 1) {
+      await chrome.debugger.sendCommand(target, 'Emulation.setCPUThrottlingRate', { rate: cpuRate });
+      console.log(`[eko SW] CPU throttle applied: ${cpuRate}x slowdown`);
+    }
   } catch (err) {
     console.warn('[eko SW] Debugger command failed:', err.message);
   }
@@ -120,8 +139,8 @@ async function cleanupTest(tabId) {
     armedTabs.delete(tabId);
     await detachDebugger(tabId);
   }
-  await removeCookie();
-  await chrome.storage.local.set({ testActive: false, armedTabId: null, armedTabUrl: null });
+  await removeCookies();
+  await chrome.storage.local.set({ testActive: false, armedTabId: null, armedTabUrl: null, gatePhase: false });
   await unregisterStressScripts();
 }
 
@@ -165,11 +184,12 @@ const messageHandlers = {
       settings,
       testActive: true,
       armedTabId: tabId,
-      armedTabUrl: url
+      armedTabUrl: url,
+      gatePhase: true
     });
     armedTabs.set(tabId, settings);
 
-    // Plant settings in a cookie BEFORE reload so MAIN world scripts can
+    // Plant settings + gate cookies BEFORE reload so MAIN world scripts can
     // read them synchronously via document.cookie at document_start.
     if (url) {
       try {
@@ -177,6 +197,13 @@ const messageHandlers = {
           url,
           name: COOKIE_NAME,
           value: encodeURIComponent(JSON.stringify(settings)),
+          path: '/',
+          expirationDate: Math.floor(Date.now() / 1000) + 300
+        });
+        await chrome.cookies.set({
+          url,
+          name: GATE_COOKIE,
+          value: '1',
           path: '/',
           expirationDate: Math.floor(Date.now() / 1000) + 300
         });
@@ -215,10 +242,7 @@ const messageHandlers = {
   }
 };
 
-// Inject floating panel + CSS once the page is fully loaded, and apply network throttle
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  if (changeInfo.status !== 'complete') return;
-
   let settings = armedTabs.get(tabId);
   if (!settings) {
     const data = await chrome.storage.local.get(['testActive', 'armedTabId', 'settings']);
@@ -227,26 +251,28 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     armedTabs.set(tabId, settings);
   }
 
-  // Apply cache disable and/or network throttle via Chrome Debugger Protocol
-  await applyDebuggerSettings(tabId, settings);
+  if (changeInfo.status === 'loading') {
+    // Check if we've moved past the gate phase (gate cookie was deleted by
+    // the "Load Page Now" click, so this is Phase 2)
+    const data = await chrome.storage.local.get('gatePhase');
+    if (data.gatePhase) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        const gateCookie = tab.url
+          ? await chrome.cookies.get({ url: tab.url, name: GATE_COOKIE })
+          : null;
+        if (!gateCookie) {
+          await chrome.storage.local.set({ gatePhase: false });
+        }
+      } catch (_) {}
+    }
 
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content/panel.js'],
-      world: 'MAIN'
-    });
-    await chrome.scripting.insertCSS({
-      target: { tabId },
-      files: ['content/panel.css']
-    });
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'eko-stress-start',
-      settings
-    });
-  } catch (err) {
-    console.error('[eko SW] Panel inject failed:', err.message);
+    // Apply cache disable / network throttle early so it affects resource loading
+    await applyDebuggerSettings(tabId, settings);
   }
+
+  // Panel is now registered as a document_start content script,
+  // so no explicit injection needed here.
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
