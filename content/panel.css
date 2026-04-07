@@ -1,0 +1,387 @@
+.eko-stress-panel {
+  --eko-primary: #6366f1;
+  --eko-primary-hover: #4f46e5;
+  --eko-accent: #8b5cf6;
+  --eko-success: #10b981;
+  --eko-warning: #f59e0b;
+  --eko-danger: #ef4444;
+  --eko-bg-dark: #0f0f14;
+  --eko-bg-card: #18181f;
+  --eko-bg-elevated: #1f1f28;
+  --eko-border: rgba(255, 255, 255, 0.08);
+  --eko-text: #f4f4f5;
+  --eko-text-muted: #a1a1aa;
+  --eko-text-subtle: #71717a;
+  --eko-radius: 12px;
+  --eko-radius-sm: 8px;
+
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 340px;
+  max-height: calc(100vh - 40px);
+  background: var(--eko-bg-dark);
+  border-radius: var(--eko-radius);
+  box-shadow:
+    0 0 0 1px var(--eko-border),
+    0 20px 50px -12px rgba(0, 0, 0, 0.6),
+    0 0 80px -20px rgba(99, 102, 241, 0.15);
+  z-index: 2147483647;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  color: var(--eko-text);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1.4;
+}
+
+.eko-stress-panel * {
+  box-sizing: border-box;
+}
+
+.eko-stress-panel.minimized {
+  max-height: 52px;
+}
+
+.eko-stress-panel.running {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.5),
+    0 20px 50px -12px rgba(0, 0, 0, 0.6),
+    0 0 60px -10px rgba(99, 102, 241, 0.4);
+}
+
+/* Header */
+.eko-stress-panel .eko-stress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--eko-primary) 0%, var(--eko-accent) 100%);
+  cursor: move;
+  user-select: none;
+}
+
+.eko-stress-panel .eko-stress-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.eko-stress-panel .eko-stress-logo svg {
+  flex-shrink: 0;
+}
+
+.eko-stress-panel .eko-stress-title {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  text-transform: uppercase;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.eko-stress-panel .eko-panel-toggle {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, background 0.2s;
+  flex-shrink: 0;
+}
+
+.eko-stress-panel .eko-panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Body */
+.eko-stress-panel .eko-stress-body {
+  padding: 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
+.eko-stress-panel .eko-stress-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.eko-stress-panel .eko-stress-body::-webkit-scrollbar-thumb {
+  background: var(--eko-border);
+  border-radius: 2px;
+}
+
+/* Banner */
+.eko-stress-panel .eko-active-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--eko-radius-sm);
+  margin-bottom: 12px;
+}
+
+.eko-stress-panel .banner-pulse {
+  width: 12px;
+  height: 12px;
+  background: var(--eko-primary);
+  border-radius: 50%;
+  animation: ekoStressPulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ekoStressPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+}
+
+.eko-stress-panel .banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eko-stress-panel .banner-content strong {
+  font-size: 13px;
+  color: var(--eko-text);
+}
+
+.eko-stress-panel .banner-content span {
+  font-size: 11px;
+  color: var(--eko-text-muted);
+}
+
+/* Status */
+.eko-stress-panel .eko-stress-status {
+  background: var(--eko-bg-card);
+  border-radius: var(--eko-radius-sm);
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.eko-stress-panel .eko-status-row {
+  margin-bottom: 8px;
+}
+
+.eko-stress-panel .status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.eko-stress-panel .status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--eko-success);
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.eko-stress-panel .status-dot.running {
+  background: var(--eko-primary);
+  animation: ekoStressPulse 1s ease-in-out infinite;
+}
+
+.eko-stress-panel .eko-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.eko-stress-panel .eko-metric {
+  text-align: center;
+  padding: 8px 6px;
+  background: var(--eko-bg-elevated);
+  border-radius: 6px;
+}
+
+.eko-stress-panel .eko-metric .metric-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eko-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.eko-stress-panel .eko-metric .metric-label {
+  display: block;
+  font-size: 9px;
+  color: var(--eko-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Graph */
+.eko-stress-panel .eko-graph-section {
+  background: var(--eko-bg-card);
+  border-radius: var(--eko-radius-sm);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.eko-stress-panel .eko-graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.eko-stress-panel .eko-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--eko-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.eko-stress-panel .eko-graph-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eko-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Impact Meter */
+.eko-stress-panel .eko-impact-meter {
+  margin-bottom: 12px;
+}
+
+.eko-stress-panel .impact-bar-bg {
+  height: 24px;
+  background: linear-gradient(90deg,
+    #10b981 0%,
+    #22c55e 20%,
+    #84cc16 35%,
+    #f59e0b 50%,
+    #f97316 65%,
+    #ef4444 80%,
+    #dc2626 100%
+  );
+  border-radius: 6px;
+  position: relative;
+  overflow: visible;
+}
+
+.eko-stress-panel .impact-tick {
+  position: absolute;
+  top: -4px;
+  transform: translateX(-50%);
+  transition: left 0.15s ease-out;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.eko-stress-panel .tick-line {
+  width: 6px;
+  height: 32px;
+  background: #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+.eko-stress-panel .tick-value {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.eko-stress-panel .impact-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 9px;
+  color: var(--eko-text-subtle);
+}
+
+.eko-stress-panel .impact-labels span:nth-child(2),
+.eko-stress-panel .impact-labels span:nth-child(3) {
+  color: var(--eko-text-muted);
+}
+
+/* Graph Stats */
+.eko-stress-panel .eko-graph-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--eko-border);
+}
+
+.eko-stress-panel .graph-stat {
+  text-align: center;
+}
+
+.eko-stress-panel .graph-stat .stat-label {
+  display: block;
+  font-size: 9px;
+  color: var(--eko-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.eko-stress-panel .graph-stat .stat-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--eko-text);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress */
+.eko-stress-panel .eko-progress {
+  margin-bottom: 12px;
+}
+
+.eko-stress-panel .progress-track {
+  height: 6px;
+  background: var(--eko-bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.eko-stress-panel .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--eko-primary), var(--eko-accent));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.eko-stress-panel .progress-label {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: var(--eko-text-subtle);
+  margin-top: 6px;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .eko-stress-panel {
+    width: calc(100vw - 20px);
+    right: 10px;
+    left: 10px;
+    top: 10px;
+  }
+}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="eko-popup">
+    <div class="eko-header">
+      <svg width="45" height="20" viewBox="0 0 45 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30.0606 5.62405H24.8662L20.5566 12.4505V0H16.1478V19.6728H20.0074L22.8143 15.7534L25.6213 19.6728H31.2658L25.4154 12.1157L30.0606 5.62405Z" fill="white"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M29.5267 12.6408C29.5267 8.57686 32.8295 5.28158 36.9026 5.28158C40.9834 5.28158 44.2862 8.57686 44.2786 12.6408C44.2786 16.7047 40.9758 20 36.9026 20C32.8295 20 29.5267 16.7047 29.5267 12.6408ZM33.9507 12.6484C33.9507 14.4597 35.2703 15.7686 36.9026 15.7686C38.535 15.7686 39.8545 14.4521 39.8545 12.6484C39.8545 10.8371 38.535 9.52055 36.9026 9.52055C35.2703 9.52055 33.9507 10.8371 33.9507 12.6484Z" fill="white"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M0 12.6408C0 8.57686 3.30278 5.28158 7.37595 5.28158C11.4491 5.28158 14.7519 8.57686 14.7519 12.6408C14.7519 13.1126 14.7061 13.5769 14.6222 14.0259H4.41642C4.91984 15.449 6.03348 16.172 7.41409 16.172C8.73368 16.172 9.32863 15.7839 9.79392 15.2359H14.279C13.2264 18.0213 10.5338 20 7.37595 20C3.30278 20 0 16.7047 0 12.6408ZM7.37595 9.14002C6.03348 9.14002 4.88933 9.9315 4.41641 11.2557H10.3355C9.87019 9.9315 8.71842 9.14002 7.37595 9.14002Z" fill="white"/>
+      </svg>
+      <span class="eko-header-title">Stress Test</span>
+      <span class="eko-status" id="status-badge">Idle</span>
+    </div>
+
+    <div class="eko-section">
+      <label class="eko-label">Intensity</label>
+      <div class="eko-btn-group" id="intensity-group">
+        <button class="eko-btn" data-level="off">Off</button>
+        <button class="eko-btn" data-level="low">Low</button>
+        <button class="eko-btn active" data-level="medium">Med</button>
+        <button class="eko-btn" data-level="high">High</button>
+        <button class="eko-btn" data-level="extreme">Max</button>
+      </div>
+    </div>
+
+    <div class="eko-section">
+      <label class="eko-label">Duration</label>
+      <div class="eko-btn-group" id="duration-group">
+        <button class="eko-btn" data-duration="5">5s</button>
+        <button class="eko-btn" data-duration="10">10s</button>
+        <button class="eko-btn" data-duration="15">15s</button>
+        <button class="eko-btn active" data-duration="30">30s</button>
+        <button class="eko-btn" data-duration="60">60s</button>
+        <button class="eko-btn" data-duration="0">&infin;</button>
+      </div>
+    </div>
+
+    <div class="eko-section">
+      <label class="eko-label">General Stress</label>
+      <div class="eko-toggles">
+        <label class="eko-toggle checked" data-key="js">
+          <input type="checkbox" checked>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">JS Compute</span>
+        </label>
+        <label class="eko-toggle checked" data-key="layout">
+          <input type="checkbox" checked>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Layout Shift</span>
+        </label>
+        <label class="eko-toggle checked" data-key="longtasks">
+          <input type="checkbox" checked>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Long Tasks</span>
+        </label>
+        <label class="eko-toggle" data-key="memory">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Memory</span>
+        </label>
+        <label class="eko-toggle" data-key="dom">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">DOM Tree</span>
+        </label>
+        <label class="eko-toggle" data-key="network">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Event Loop</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="eko-section">
+      <label class="eko-label">eko Targeting</label>
+      <div class="eko-toggles">
+        <label class="eko-toggle" data-key="ekoNetworkDelay">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Network Delay</span>
+        </label>
+        <label class="eko-toggle" data-key="ekoDomTargeting">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">DOM Targeting</span>
+        </label>
+        <label class="eko-toggle" data-key="ekoRenderInterference">
+          <input type="checkbox">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Render Interference</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="eko-actions">
+      <button id="start-btn" class="eko-action-btn primary">Start Test</button>
+      <button id="stop-btn" class="eko-action-btn secondary" disabled>Stop</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

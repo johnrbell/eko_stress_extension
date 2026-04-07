@@ -1,0 +1,247 @@
+:root {
+  --eko-primary: #6366f1;
+  --eko-primary-hover: #4f46e5;
+  --eko-accent: #8b5cf6;
+  --eko-success: #10b981;
+  --eko-warning: #f59e0b;
+  --eko-danger: #ef4444;
+  --eko-bg: #0f0f14;
+  --eko-bg-card: #18181f;
+  --eko-bg-elevated: #1f1f28;
+  --eko-border: rgba(255, 255, 255, 0.08);
+  --eko-text: #f4f4f5;
+  --eko-text-muted: #a1a1aa;
+  --eko-text-subtle: #71717a;
+  --eko-radius: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  background: var(--eko-bg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: var(--eko-text);
+}
+
+.eko-popup {
+  padding: 0;
+}
+
+.eko-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, var(--eko-primary) 0%, var(--eko-accent) 100%);
+}
+
+.eko-header-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.eko-status {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.eko-status.running {
+  background: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.eko-status.completed {
+  background: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+}
+
+.eko-section {
+  padding: 10px 14px 0;
+}
+
+.eko-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--eko-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.eko-btn-group {
+  display: flex;
+  gap: 3px;
+}
+
+.eko-btn {
+  flex: 1;
+  padding: 7px 2px;
+  background: var(--eko-bg-card);
+  border: 1px solid var(--eko-border);
+  border-radius: 6px;
+  color: var(--eko-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.eko-btn:hover {
+  background: var(--eko-bg-elevated);
+  color: var(--eko-text);
+}
+
+.eko-btn.active {
+  background: var(--eko-primary);
+  border-color: var(--eko-primary);
+  color: white;
+}
+
+.eko-btn.active[data-level="off"] {
+  background: #71717a;
+  border-color: #71717a;
+}
+
+.eko-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.eko-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--eko-bg-card);
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--eko-border);
+  transition: all 0.15s;
+}
+
+.eko-toggle:hover {
+  background: var(--eko-bg-elevated);
+}
+
+.eko-toggle.checked {
+  border-color: var(--eko-primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.eko-toggle.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.eko-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.toggle-switch {
+  width: 28px;
+  height: 16px;
+  background: var(--eko-bg-elevated);
+  border-radius: 8px;
+  position: relative;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--eko-text-subtle);
+  border-radius: 50%;
+  transition: all 0.15s;
+}
+
+.eko-toggle input:checked + .toggle-switch {
+  background: var(--eko-primary);
+}
+
+.eko-toggle input:checked + .toggle-switch::after {
+  left: 14px;
+  background: white;
+}
+
+.toggle-text {
+  font-size: 10px;
+  color: var(--eko-text-muted);
+  white-space: nowrap;
+}
+
+.eko-toggle.checked .toggle-text {
+  color: var(--eko-text);
+}
+
+.eko-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.eko-action-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: var(--eko-radius);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.eko-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.eko-action-btn.primary {
+  background: linear-gradient(135deg, var(--eko-primary), var(--eko-accent));
+  color: white;
+}
+
+.eko-action-btn.primary:not(:disabled):hover {
+  box-shadow: 0 4px 16px -4px rgba(99, 102, 241, 0.5);
+}
+
+.eko-action-btn.primary.running {
+  background: linear-gradient(135deg, var(--eko-warning), #f97316);
+}
+
+.eko-action-btn.secondary {
+  background: var(--eko-bg-card);
+  border: 1px solid var(--eko-border);
+  color: var(--eko-text-muted);
+}
+
+.eko-action-btn.secondary:not(:disabled):hover {
+  background: var(--eko-bg-elevated);
+  color: var(--eko-text);
+}

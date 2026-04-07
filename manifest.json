@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "eko Stress Test",
+  "version": "1.0.0",
+  "description": "Stress test the eko player integration by simulating CPU load, long tasks, layout thrashing, and eko-specific interference on any page.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

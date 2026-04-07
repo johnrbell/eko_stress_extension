@@ -1,173 +1,63 @@
-# eko Stress Test Suite
+# eko Stress Test - Chrome Extension
 
-A complete performance testing toolkit for measuring how CPU/JS stress affects the eko gallery user experience on Shopify stores. Includes a Liquid snippet that simulates various levels of browser stress, plus automated Playwright-based testing with visual D3.js reports.
+A Chrome extension that stress tests the eko player integration on any website. Simulates real-world performance issues (CPU load, long tasks, layout thrashing, memory pressure) and includes eko-specific targeting modes that can selectively degrade network requests, DOM operations, and rendering for eko components.
 
-<p align="center">
-  <img src="images/panel-running.png" alt="Stress Test Control Panel" width="700">
-</p>
+## Background
 
-<p align="center">
-  <em>The stress test control panel showing live metrics during a test run</em>
-</p>
+The eko player is now rendered as a **same-page component** (not an iframe). This means it shares the main thread with the host page, making it directly susceptible to JavaScript contention, layout thrashing, and other performance issues caused by third-party scripts. This extension simulates those conditions so you can measure how the eko gallery experience degrades under realistic browser stress.
 
----
+Previously this was a Shopify Liquid snippet (`cpu-stress-test.liquid`) injected into theme files. The Chrome extension approach removes the dependency on Shopify theme access and works on any page, including the Next.js-based gallery app.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Part 1: Stress Test Snippet](#part-1-stress-test-snippet)
-  - [What It Does](#what-it-does)
-  - [Installation](#installation)
-  - [URL Parameters](#url-parameters)
-  - [Using the Control Panel](#using-the-control-panel)
-- [Part 2: Automated Performance Testing](#part-2-automated-performance-testing)
-  - [Quick Start](#quick-start)
-  - [Configuration](#configuration)
-  - [Running Tests](#running-tests)
-  - [Visual Reports](#visual-reports)
-- [Understanding Results](#understanding-results)
-- [Troubleshooting](#troubleshooting)
+**Test page:** https://dianadevstores.eko.com/nextjs-pages-router/gallery-app/tv
 
 ---
 
-## Overview
+## Installation
 
-This toolkit helps answer the question: **"How does third-party JavaScript affect the eko gallery experience?"**
+1. Open `chrome://extensions/` in Chrome
+2. Enable **Developer mode** (toggle in the top-right)
+3. Click **Load unpacked**
+4. Select this `stress-extension/` directory
 
-It consists of two parts:
-
-1. **Stress Test Snippet** (`cpu-stress-test.liquid`) - A Shopify Liquid snippet that simulates various levels of browser stress (CPU load, long tasks, memory pressure, etc.)
-
-2. **Automated Testing Tool** (`perf-test/`) - A Playwright-based Node.js tool that automatically runs the stress test at different intensity levels and generates comparative reports
+The eko icon will appear in your toolbar.
 
 ---
 
-## Part 1: Stress Test Snippet
+## Usage
 
-### What It Does
+### Quick Start
 
-The stress test snippet simulates real-world performance issues that can affect e-commerce sites:
+1. Navigate to any page with an eko player (e.g. the [test page](https://dianadevstores.eko.com/nextjs-pages-router/gallery-app/tv))
+2. Click the extension icon in the toolbar
+3. Configure intensity, duration, and stress types
+4. Click **Start Test**
+5. A floating metrics panel appears on the page showing live results (elapsed time, blocked time, operations, impact meter, estimated FPS, block rate)
+6. Click **Stop** or wait for the duration to expire
 
-| Stress Type | What It Simulates |
-|-------------|-------------------|
-| **JS Compute** | Heavy JavaScript calculations (analytics, A/B testing scripts) |
-| **Long Tasks** | Main thread blocking (chat widgets, personalization engines) |
-| **Layout Thrashing** | Forced reflows/repaints (carousels, dynamic content) |
-| **Memory Pressure** | Garbage collection stress (memory leaks, large DOM) |
-| **DOM Operations** | Heavy render tree updates (infinite scroll, live updates) |
-| **Network/Event Loop** | Async operations flooding the event loop |
+### Popup Controls
 
-### Installation
+| Control | Options | Description |
+|---------|---------|-------------|
+| **Intensity** | Off / Low / Med / High / Max | Scales all stress parameters proportionally |
+| **Duration** | 5s / 10s / 15s / 30s / 60s / Infinite | How long the test runs |
+| **JS Compute** | On/Off | Heavy math operations (sqrt, sin, cos, tan) blocking the main thread |
+| **Layout Shift** | On/Off | Forced reflows via interleaved reads/writes of layout properties |
+| **Long Tasks** | On/Off | Synchronous busy-wait loops that create >50ms "Long Task" entries |
+| **Memory** | On/Off | `Float64Array` allocations and partial releases to trigger GC pauses |
+| **DOM Tree** | On/Off | Creation and removal of deeply nested DOM node trees |
+| **Event Loop** | On/Off | Blob-URL fetch calls that saturate the microtask queue |
 
-#### Step 1: Copy the Snippet File
+### eko-Specific Targeting
 
-Copy `snippets/cpu-stress-test.liquid` to your Shopify theme's `snippets/` folder.
+These modes selectively target the eko player component and its resources. Since the player now runs on the same main thread (no iframe isolation), these directly interfere with its rendering and data loading:
 
-**Option A: Via Shopify Admin**
-1. Go to **Online Store → Themes**
-2. Click **⋯ → Edit code** on your development theme
-3. Under **Snippets**, click **Add a new snippet**
-4. Name it `cpu-stress-test`
-5. Paste the contents of `snippets/cpu-stress-test.liquid`
-6. Click **Save**
+| Mode | What It Does |
+|------|-------------|
+| **Network Delay** | Adds 200ms-2000ms latency (scaled by intensity) to `fetch` and `XHR` requests matching eko URL patterns: `visually-io.com`, `live.visually-io.com`, `play.eko.com`, `video.eko.com`, `vsly-preact`, `visually.js` |
+| **DOM Targeting** | Uses `MutationObserver` to find eko gallery elements (`.eko-smart-gallery-container`, `.eko-gallery`, `[class*="vsly"]`, `[data-vsly]`, `[class*="eko-"]`, `[data-eko]`) and aggressively thrashes their subtrees with forced reflows, style mutations, and `getBoundingClientRect` reads |
+| **Render Interference** | Attaches `ResizeObserver` and `IntersectionObserver` to eko elements, triggering heavy canvas paint work and forced compositing synchronized with component visibility/size changes |
 
-**Option B: Via Shopify CLI**
-```bash
-# If you have theme files locally
-cp snippets/cpu-stress-test.liquid /path/to/your-theme/snippets/
-shopify theme push
-```
-
-#### Step 2: Add the Render Tag to theme.liquid
-
-Open your theme's `layout/theme.liquid` file and add the render tag inside the `<head>` section:
-
-```liquid
-<!doctype html>
-<html>
-  <head>
-    {%- comment -%} eko CPU Stress Test - Only on Product Pages {%- endcomment -%}
-    {%- if request.page_type == 'product' -%}
-      {% render 'cpu-stress-test' %}
-    {%- endif -%}
-    
-    <!-- ... rest of your head content ... -->
-  </head>
-```
-
-**Important placement notes:**
-- Place it **at the very top** of the `<head>` section (before other scripts)
-- The stress test runs synchronously during page parse to simulate real blocking scripts
-- The conditional `request.page_type == 'product'` limits it to product pages only
-
-#### Step 3: Save and Preview
-
-1. Save `theme.liquid`
-2. Preview your theme (don't publish to live!)
-3. Navigate to any product page
-4. You should see the eko Stress Panel in the bottom-right corner
-
-### URL Parameters
-
-Control the stress test via URL parameters for easy sharing and automation:
-
-| Parameter | Values | Default | Description |
-|-----------|--------|---------|-------------|
-| `stress` | `1` | - | **Required** to auto-start the test |
-| `intensity` | `off`, `low`, `medium`, `high`, `extreme` | `medium` | Stress level |
-| `duration` | `5`, `10`, `15`, `30`, `60`, `0` | `30` | Seconds (0 = infinite) |
-| `js` | `0`, `1` | `1` | Enable JS compute stress |
-| `layout` | `0`, `1` | `1` | Enable layout thrashing |
-| `longtasks` | `0`, `1` | `1` | Enable long blocking tasks |
-| `memory` | `0`, `1` | `0` | Enable memory pressure |
-| `dom` | `0`, `1` | `0` | Enable DOM stress |
-| `network` | `0`, `1` | `0` | Enable network/event loop stress |
-
-#### Example URLs
-
-```bash
-# Medium stress for 10 seconds (good for demos)
-https://your-store.myshopify.com/products/test-product?stress=1&intensity=medium&duration=10
-
-# High stress with all options enabled
-https://your-store.myshopify.com/products/test-product?stress=1&intensity=high&duration=30&js=1&layout=1&longtasks=1&memory=1&dom=1&network=1
-
-# Extreme stress (simulates worst-case scenario)
-https://your-store.myshopify.com/products/test-product?stress=1&intensity=extreme&duration=5
-
-# Baseline - no stress (for comparison)
-https://your-store.myshopify.com/products/test-product?stress=1&intensity=off
-```
-
-**Don't forget the preview_theme_id!** If testing an unpublished theme:
-```
-?preview_theme_id=YOUR_THEME_ID&stress=1&intensity=high&duration=10
-```
-
-### Using the Control Panel
-
-When the snippet is installed, a control panel appears on product pages:
-
-<p align="center">
-  <img src="images/panel-idle.png" alt="Control Panel - Idle State" width="700">
-</p>
-
-<p align="center">
-  <em>The stress test panel in idle state, ready to configure and run tests</em>
-</p>
-
-**Panel Features:**
-
-- **Intensity Selector** - Choose stress level (off/low/medium/high/extreme)
-- **Duration Selector** - How long the test runs
-- **Stress Type Toggles** - Enable/disable specific stress types
-- **Start/Stop Button** - Manually control the test
-- **Live Metrics** - Shows blocked time, FPS, and operations in real-time
-- **Performance Graph** - Visual timeline of stress impact
-
-The panel is draggable and can be collapsed.
-
-### Intensity Levels Explained
+### Intensity Levels
 
 | Level | Main Thread Blocking | User Experience |
 |-------|---------------------|-----------------|
@@ -179,190 +69,91 @@ The panel is draggable and can be collapsed.
 
 ---
 
-## Part 2: Automated Performance Testing
+## Architecture
 
-The `perf-test/` folder contains a Playwright-based tool that automatically runs stress tests and generates reports.
-
-### Quick Start
-
-```bash
-# 1. Navigate to the perf-test folder
-cd perf-test
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure settings in run-perf-tests.js (see Configuration)
-
-# 4. Run tests AND generate visual report
-npm run test:report
-
-# 5. Open the visual report
-open reports/visual-report.html
+```
+stress-extension/
+  manifest.json                 # Manifest V3 extension config
+  background/
+    service-worker.js           # State management, script injection, messaging hub
+  popup/
+    popup.html                  # Extension popup UI
+    popup.css                   # Popup styles (eko dark theme)
+    popup.js                    # Settings management, start/stop logic
+  content/
+    content-bridge.js           # ISOLATED world: message relay between extension and page
+    stress-engine.js            # MAIN world: core stress test loop (from cpu-stress-test.liquid)
+    eko-targeting.js            # MAIN world: eko-specific stress modes (new)
+    panel.js                    # MAIN world: floating metrics panel
+    panel.css                   # Panel styles injected into the page
+  icons/
+    icon16.png                  # Toolbar icon
+    icon48.png                  # Extensions page icon
+    icon128.png                 # Chrome Web Store icon
 ```
 
-### Configuration
+### Messaging Flow
 
-Edit the `CONFIG` object at the top of `run-perf-tests.js`:
+The extension uses a three-layer architecture required by Manifest V3:
 
-```javascript
-const CONFIG = {
-  // REQUIRED: Your store's product page URL (without query params)
-  baseUrl: 'https://your-store.myshopify.com/products/your-product',
-  
-  // REQUIRED: The preview theme ID containing the stress test snippet
-  // Find this in the Shopify admin URL when previewing your theme
-  previewThemeId: '185250185506',
-  
-  // REQUIRED if store is password protected, otherwise set to null
-  storePassword: 'your-password',  // or null
-  
-  // Intensity levels to test
-  intensities: ['off', 'low', 'medium', 'high', 'extreme'],
-  
-  // How long each stress test runs (seconds)
-  stressDuration: 10,
-  
-  // Wait time after page load to collect metrics (ms)
-  settleTime: 5000,
-  
-  // Number of runs per intensity (higher = more accurate)
-  runsPerLevel: 1,
-};
+```
+popup.js
+  -- chrome.runtime.sendMessage -->
+    service-worker.js
+      -- chrome.scripting.executeScript (injects scripts) -->
+      -- chrome.tabs.sendMessage -->
+        content-bridge.js [ISOLATED world]
+          -- document CustomEvent (JSON-serialized) -->
+            stress-engine.js [MAIN world]
+            eko-targeting.js [MAIN world]
+            panel.js [MAIN world]
 ```
 
-#### Finding Your Preview Theme ID
-
-1. Go to **Shopify Admin → Online Store → Themes**
-2. Click **Customize** on your development theme
-3. Look at the URL: `...?preview_theme_id=XXXXXXXXX`
-4. Copy that number into `previewThemeId`
-
-### Running Tests
-
-| Command | Description |
-|---------|-------------|
-| `npm run test:report` | Run tests + generate visual report (recommended) |
-| `npm test` | Run tests only |
-| `npm run test:quick` | Quick tests with shorter duration |
-| `npm run report` | Generate visual report from existing data |
-
-### Visual Reports
-
-The tool generates interactive HTML reports with D3.js charts:
-
-<p align="center">
-  <img src="images/visual-report.png" alt="Visual Report - Executive Summary" width="700">
-</p>
-
-<p align="center">
-  <em>Executive summary showing blocking time and user experience ratings for each intensity level</em>
-</p>
-
-<p align="center">
-  <img src="images/visual-report-charts.png" alt="Visual Report - Charts" width="700">
-</p>
-
-<p align="center">
-  <em>Interactive D3.js charts comparing page load times and eko gallery performance</em>
-</p>
-
-**Report Sections:**
-
-- **Executive Summary** - Color-coded cards showing impact at each level
-- **Blocking Time Chart** - Bar chart comparing main thread blocking
-- **Load Time Chart** - Page load vs eko gallery load times
-- **FPS & Long Tasks** - Frame rate and task count comparison
-- **Core Web Vitals** - LCP, FCP, TBT, CLS with ratings
-- **User Experience** - What each level feels like for users
-- **Detailed Table** - All metrics in one view
-
-Reports are saved to `perf-test/reports/`:
-- `visual-report.html` - Interactive charts
-- `performance-report-[timestamp].md` - Markdown summary
-- `raw-data-[timestamp].json` - Raw metrics data
+MAIN world scripts must run in the page's JavaScript context to block the main thread and access `window`, DOM APIs, `fetch`, and `XMLHttpRequest`. The ISOLATED world bridge is needed because MAIN world scripts cannot access `chrome.runtime`. Event payloads are JSON-stringified to cross the world boundary cleanly.
 
 ---
 
-## Understanding Results
+## How It Works
 
-### Key Metrics
+When you click **Start Test**, the service worker injects four scripts into the active tab:
 
-| Metric | What It Measures | Why It Matters |
-|--------|-----------------|----------------|
-| **Blocking Time** | Time main thread was blocked | Affects all interactions |
-| **eko Gallery Load** | When gallery is ready | User's first impression |
-| **Long Tasks** | Tasks >50ms | Causes visible jank |
-| **FPS** | Frames per second | Animation smoothness |
-| **LCP** | Largest Contentful Paint | Perceived load speed |
+1. **content-bridge.js** (isolated world) -- sets up bidirectional message relay using `document` CustomEvents
+2. **stress-engine.js** (main world) -- starts the stress loop: an initial synchronous block followed by a `setTimeout(..., 4)` recurring loop that performs JS compute, layout thrashing, memory allocation, DOM manipulation, and event loop saturation based on config
+3. **eko-targeting.js** (main world) -- if enabled, monkey-patches `fetch`/`XHR` for network delay, starts `MutationObserver`-based DOM thrashing on eko elements, and attaches `ResizeObserver`/`IntersectionObserver` for render interference
+4. **panel.js** (main world) + **panel.css** -- creates a draggable, collapsible floating panel that polls `window.__stressState` every 100ms and displays live metrics
 
-### User Experience Ratings
+When the test ends (by duration expiry or manual stop), each module cleans up: the stress loop exits, network patches are restored, observers are disconnected, and the panel is removed from the DOM.
 
-| Rating | Blocking Time | Description |
-|--------|--------------|-------------|
-| ✅ Smooth | < 1,000ms | Normal, responsive |
-| ⚠️ Noticeable | 1,000 - 3,000ms | Some delays |
-| 🔶 Frustrating | 3,000 - 6,000ms | Users may leave |
-| 🚨 Unusable | > 6,000ms | Page feels broken |
+Settings persist in `chrome.storage.local` across sessions.
 
 ---
 
 ## Troubleshooting
 
-### Stress Panel Not Appearing
+### Extension icon is grayed out / "Start Test" does nothing
 
-1. Verify the snippet is saved in `snippets/cpu-stress-test.liquid`
-2. Check that `{% render 'cpu-stress-test' %}` is in `theme.liquid`
-3. Ensure you're on a **product page** (not homepage/collection)
-4. Make sure you're viewing the correct theme (check preview_theme_id)
+The `activeTab` permission only grants access when the user clicks the extension icon. If the page is a restricted URL (`chrome://`, `chrome-extension://`, Chrome Web Store), script injection will fail. Navigate to a regular `http://` or `https://` page.
 
-### Automated Tests Show Zero Blocking Time
+### Panel doesn't appear on the page
 
-1. Verify `previewThemeId` is correct in the config
-2. The stress snippet must be in the theme you're testing
-3. Check console output for `[eko Stress]` logs
+Open DevTools Console and look for `[eko Stress]` log entries. If scripts were injected but the panel isn't visible, it may be hidden behind a high z-index element on the page. The panel uses `z-index: 2147483647` (max 32-bit int) to stay on top.
 
-### Tests Fail at Password Page
+### eko-specific targeting modes have no visible effect
 
-1. Set `storePassword` to your store's password
-2. If store is public, set `storePassword: null`
+The DOM Targeting and Render Interference modes rely on finding eko elements in the page using CSS selectors like `.eko-gallery` and `[class*="vsly"]`. If the eko player uses different class names on the page you're testing, the selectors in `content/eko-targeting.js` (`EKO_SELECTORS` array) may need updating.
 
-### Inconsistent Results
+Network Delay only affects requests matching URL patterns in `EKO_URL_PATTERNS`. Check the Console for `[eko Target] Delaying fetch` log entries to confirm requests are being intercepted.
 
-1. Increase `runsPerLevel` to 3+ for averaging
-2. Close other browser tabs
-3. Use `npm test` instead of `npm run test:quick`
+### Stress test doesn't feel intense enough
 
----
+Make sure **Long Tasks** is enabled -- it provides the synchronous blocking that creates the most perceptible main-thread contention. At **Extreme** intensity, the initial synchronous block alone is 2400ms.
 
-## File Structure
+### Running multiple tests in a row
 
-```
-stress-test/
-├── README.md                           # This file
-├── images/                             # Screenshots for documentation
-│   ├── panel-idle.png                  # Control panel in idle state
-│   ├── panel-running.png               # Control panel during stress test
-│   ├── visual-report.png               # Report executive summary
-│   └── visual-report-charts.png        # Report charts section
-├── snippets/
-│   └── cpu-stress-test.liquid          # The stress test snippet
-├── layout/
-│   └── theme.liquid                    # Theme layout (shows where to add render tag)
-└── perf-test/
-    ├── run-perf-tests.js               # Main test script
-    ├── generate-visual-report.js       # Report generator
-    ├── capture-screenshots.js          # Screenshot capture for docs
-    ├── package.json                    # Dependencies
-    ├── README.md                       # Testing tool docs
-    └── reports/
-        ├── visual-report.html          # Interactive charts
-        ├── performance-report-*.md     # Markdown reports
-        └── raw-data-*.json             # Raw data
-```
+Stop the current test before starting a new one. Each script guards against double-initialization (`if (window.__ekoStressEngine) return`), so re-injecting on the same page reuses the existing instances and sends fresh start commands.
 
 ---
 
 ## License
 
-Internal use only - eko team.
+Internal use only -- eko team.
