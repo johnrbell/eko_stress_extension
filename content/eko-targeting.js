@@ -269,4 +269,15 @@
       window.__ekoTargeting.stop();
     }
   });
+
+  // Auto-start fallback: check DOM attribute planted by bridge
+  const autoData = document.documentElement.getAttribute('data-eko-stress');
+  if (autoData) {
+    try {
+      const msg = JSON.parse(autoData);
+      if (msg.type === 'eko-stress-start' && msg.settings) {
+        window.__ekoTargeting.start(msg.settings);
+      }
+    } catch (_) {}
+  }
 })();

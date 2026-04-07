@@ -239,4 +239,16 @@
       window.__ekoStressEngine.stop();
     }
   });
+
+  // Auto-start fallback: bridge may have already written settings into a DOM
+  // attribute before this script loaded. Check it synchronously on init.
+  const autoData = document.documentElement.getAttribute('data-eko-stress');
+  if (autoData) {
+    try {
+      const msg = JSON.parse(autoData);
+      if (msg.type === 'eko-stress-start' && msg.settings) {
+        window.__ekoStressEngine.start(msg.settings);
+      }
+    } catch (_) {}
+  }
 })();
