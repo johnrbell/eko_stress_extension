@@ -12,7 +12,8 @@ const DEFAULT_SETTINGS = {
   ekoNetworkDelay: false,
   ekoDomTargeting: false,
   ekoRenderInterference: false,
-  networkThrottle: 'none'
+  networkThrottle: 'none',
+  disableCache: true
 };
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -63,7 +64,9 @@ function renderUI() {
 function updateToggleDisabledState() {
   const isOff = settings.intensity === 'off';
   document.querySelectorAll('.eko-toggle').forEach(t => {
-    t.classList.toggle('disabled', isOff);
+    const key = t.dataset.key;
+    const exempt = key === 'disableCache';
+    t.classList.toggle('disabled', isOff && !exempt);
   });
 }
 

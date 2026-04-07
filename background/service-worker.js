@@ -12,7 +12,8 @@ const DEFAULT_SETTINGS = {
   ekoNetworkDelay: false,
   ekoDomTargeting: false,
   ekoRenderInterference: false,
-  networkThrottle: 'none'
+  networkThrottle: 'none',
+  disableCache: true
 };
 
 const THROTTLE_PRESETS = {
@@ -73,9 +74,10 @@ async function removeCookie() {
   } catch (_) {}
 }
 
-async function applyThrottle(tabId, preset) {
-  const params = THROTTLE_PRESETS[preset];
-  if (!params) return;
+async function applyDebuggerSettings(tabId, settings) {
+  const throttle = THROTTLE_PRESETS[settings.networkThrottle];
+  const disableCache = settings.disableCache !== false;
+  if (!throttle && !disableCache) return;
 
   const target = { tabId };
   try {
@@ -90,10 +92,18 @@ async function applyThrottle(tabId, preset) {
 
   try {
     await chrome.debugger.sendCommand(target, 'Network.enable');
-    await chrome.debugger.sendCommand(target, 'Network.emulateNetworkConditions', params);
-    console.log(`[eko SW] Network throttle applied: ${preset}`);
+
+    if (disableCache) {
+      await chrome.debugger.sendCommand(target, 'Network.setCacheDisabled', { cacheDisabled: true });
+      console.log('[eko SW] Browser cache disabled');
+    }
+
+    if (throttle) {
+      await chrome.debugger.sendCommand(target, 'Network.emulateNetworkConditions', throttle);
+      console.log(`[eko SW] Network throttle applied: ${settings.networkThrottle}`);
+    }
   } catch (err) {
-    console.warn('[eko SW] Network.emulateNetworkConditions failed:', err.message);
+    console.warn('[eko SW] Debugger command failed:', err.message);
   }
 }
 
@@ -176,7 +186,7 @@ const messageHandlers = {
     }
 
     await registerStressScripts();
-    chrome.tabs.reload(tabId);
+    chrome.tabs.reload(tabId, { bypassCache: true });
 
     return { ok: true };
   },
@@ -217,10 +227,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     armedTabs.set(tabId, settings);
   }
 
-  // Apply network throttle via Chrome Debugger Protocol after page starts loading
-  if (settings.networkThrottle && settings.networkThrottle !== 'none') {
-    await applyThrottle(tabId, settings.networkThrottle);
-  }
+  // Apply cache disable and/or network throttle via Chrome Debugger Protocol
+  await applyDebuggerSettings(tabId, settings);
 
   try {
     await chrome.scripting.executeScript({
